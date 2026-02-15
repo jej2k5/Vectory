@@ -22,7 +22,7 @@ A high-performance, self-hosted vector database with built-in ingestion pipeline
 ### Running with Docker
 
 ```bash
-git clone https://github.com/yourusername/vectory.git
+git clone https://github.com/jej2k5/vectory.git
 cd vectory
 cp .env.example .env
 # Edit .env with your API keys (optional)
