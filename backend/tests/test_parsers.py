@@ -5,7 +5,14 @@ import tempfile
 
 import pytest
 
-from app.utils.parsers import parse_txt, parse_csv, parse_json, parse_markdown, parse_document
+from app.utils.parsers import (
+    _extract_frontmatter,
+    parse_txt,
+    parse_csv,
+    parse_json,
+    parse_markdown,
+    parse_document,
+)
 
 
 class TestTxtParser:
@@ -41,16 +48,113 @@ class TestJsonParser:
             os.unlink(f.name)
 
 
+def _parse_md(content: str) -> str:
+    """Helper: write markdown content to a temp file and parse it."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(content)
+        f.flush()
+        path = f.name
+    try:
+        return parse_markdown(path)
+    finally:
+        os.unlink(path)
+
+
+class TestExtractFrontmatter:
+    def test_basic_frontmatter(self):
+        text = "---\ntitle: Test\nauthor: Bob\n---\n\nBody text."
+        body, meta = _extract_frontmatter(text)
+        assert meta["title"] == "Test"
+        assert meta["author"] == "Bob"
+        assert "Body text" in body
+        assert "title:" not in body
+
+    def test_no_frontmatter(self):
+        text = "# Just a heading\n\nSome text."
+        body, meta = _extract_frontmatter(text)
+        assert body == text
+        assert meta == {}
+
+    def test_frontmatter_with_dashes_in_body(self):
+        text = "---\ntitle: Test\n---\n\nSome text with --- dashes."
+        body, meta = _extract_frontmatter(text)
+        assert "---" in body
+        assert meta["title"] == "Test"
+
+
 class TestMarkdownParser:
     def test_parse_markdown(self):
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-            f.write("# Title\n\nSome **bold** text and *italic* text.")
-            f.flush()
-            result = parse_markdown(f.name)
-            assert "Title" in result
-            assert "bold" in result
-            assert "**" not in result
-            os.unlink(f.name)
+        result = _parse_md("# Title\n\nSome **bold** text and *italic* text.")
+        assert "Title" in result
+        assert "bold" in result
+        assert "**" not in result
+
+    def test_code_blocks_preserved(self):
+        md = "# Title\n\n```python\ndef hello():\n    print('hi')\n```\n\nAfter code."
+        result = _parse_md(md)
+        assert "def hello():" in result
+        assert "print('hi')" in result
+        assert "After code" in result
+
+    def test_inline_code_preserved(self):
+        result = _parse_md("Use the `print()` function.")
+        assert "print()" in result
+
+    def test_tables_parsed(self):
+        md = "| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |"
+        result = _parse_md(md)
+        assert "Alice" in result
+        assert "Bob" in result
+        assert "30" in result
+
+    def test_links_text_preserved(self):
+        result = _parse_md("Visit [OpenAI](https://openai.com) for more.")
+        assert "OpenAI" in result
+
+    def test_blockquotes(self):
+        result = _parse_md("> This is a quote.")
+        assert "This is a quote" in result
+
+    def test_nested_formatting(self):
+        result = _parse_md("This has **bold with *nested italic* inside** it.")
+        assert "bold" in result
+        assert "nested italic" in result
+        assert "**" not in result
+
+    def test_ordered_list(self):
+        result = _parse_md("1. First\n2. Second\n3. Third")
+        assert "First" in result
+        assert "Second" in result
+
+    def test_unordered_list(self):
+        result = _parse_md("- Item A\n- Item B")
+        assert "Item A" in result
+        assert "Item B" in result
+
+    def test_frontmatter_stripped(self):
+        md = "---\ntitle: My Doc\nauthor: Alice\n---\n\n# Heading\n\nBody text."
+        result = _parse_md(md)
+        assert "title:" not in result
+        assert "Heading" in result
+        assert "Body text" in result
+
+    def test_header_markers_preserved(self):
+        md = "## Section One\n\nContent here.\n\n### Subsection\n\nMore content."
+        result = _parse_md(md)
+        assert "## Section One" in result
+        assert "### Subsection" in result
+
+    def test_empty_file(self):
+        result = _parse_md("")
+        assert result.strip() == ""
+
+    def test_code_block_indented(self):
+        md = "```\n# comment in code\nprint('hi')\n```"
+        result = _parse_md(md)
+        # Code block content should be indented so # is not at line start
+        for line in result.splitlines():
+            if "# comment" in line:
+                assert line.startswith("    ")
 
 
 class TestParseDocument:

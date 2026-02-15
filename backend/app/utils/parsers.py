@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 
 from app.utils.logger import logger
 
@@ -84,22 +85,107 @@ def parse_json(file_path: str) -> str:
     return "\n".join(flatten(data))
 
 
+def _extract_frontmatter(text: str) -> tuple[str, dict]:
+    """Extract YAML frontmatter from markdown text.
+
+    Returns (markdown_without_frontmatter, frontmatter_dict).
+    Parses simple ``key: value`` lines; nested YAML is not supported.
+    """
+    if not text.startswith("---"):
+        return text, {}
+
+    # Find the closing ---
+    end = text.find("\n---", 3)
+    if end == -1:
+        return text, {}
+
+    frontmatter_block = text[3:end].strip()
+    body = text[end + 4:]  # skip past \n---
+
+    metadata: dict[str, str] = {}
+    for line in frontmatter_block.splitlines():
+        match = re.match(r"^(\w[\w\s]*?):\s*(.+)$", line.strip())
+        if match:
+            metadata[match.group(1).strip()] = match.group(2).strip()
+
+    return body, metadata
+
+
 def parse_markdown(file_path: str) -> str:
-    """Read a markdown file and return as plain text."""
+    """Read a markdown file and convert to structured plain text.
+
+    Uses the ``markdown`` library to convert to HTML, then ``BeautifulSoup``
+    to extract clean text.  Header ``#`` markers are preserved so that the
+    markdown-aware chunker can split on them.  Code-block content is indented
+    by four spaces to prevent false header matches.
+    """
+    import markdown as md_lib
+    from bs4 import BeautifulSoup, NavigableString
+
     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-        text = f.read()
+        raw = f.read()
 
-    # Simple markdown stripping
-    import re
-    text = re.sub(r'#{1,6}\s+', '', text)  # Remove headers
-    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)  # Bold
-    text = re.sub(r'\*(.+?)\*', r'\1', text)  # Italic
-    text = re.sub(r'`(.+?)`', r'\1', text)  # Inline code
-    text = re.sub(r'```[\s\S]*?```', '', text)  # Code blocks
-    text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)  # Links
-    text = re.sub(r'!\[.*?\]\(.+?\)', '', text)  # Images
+    body, _meta = _extract_frontmatter(raw)
 
-    return text
+    html = md_lib.markdown(body, extensions=["tables", "fenced_code"])
+    soup = BeautifulSoup(html, "html.parser")
+
+    parts: list[str] = []
+
+    for element in soup.children:
+        if isinstance(element, NavigableString):
+            text = str(element).strip()
+            if text:
+                parts.append(text)
+            continue
+
+        tag = element.name
+
+        # Headings — preserve # markers
+        if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            level = int(tag[1])
+            prefix = "#" * level
+            parts.append(f"{prefix} {element.get_text().strip()}")
+
+        # Code blocks — indent to avoid false header matches
+        elif tag == "pre":
+            code = element.find("code")
+            code_text = code.get_text() if code else element.get_text()
+            indented = "\n".join(f"    {line}" for line in code_text.splitlines())
+            parts.append(indented)
+
+        # Tables
+        elif tag == "table":
+            rows: list[str] = []
+            for tr in element.find_all("tr"):
+                cells = [
+                    td.get_text().strip()
+                    for td in tr.find_all(["th", "td"])
+                ]
+                rows.append(" | ".join(cells))
+            parts.append("\n".join(rows))
+
+        # Lists
+        elif tag in ("ul", "ol"):
+            for i, li in enumerate(element.find_all("li", recursive=False), 1):
+                bullet = f"{i}." if tag == "ol" else "-"
+                parts.append(f"{bullet} {li.get_text().strip()}")
+
+        # Blockquotes
+        elif tag == "blockquote":
+            quote_lines = element.get_text().strip().splitlines()
+            parts.append("\n".join(f"> {line}" for line in quote_lines))
+
+        # Everything else (p, div, etc.)
+        else:
+            text = element.get_text().strip()
+            if text:
+                parts.append(text)
+
+    result = "\n\n".join(parts)
+    # Collapse excessive blank lines
+    result = re.sub(r"\n{3,}", "\n\n", result)
+    return result.strip("\n")
 
 
 _PARSERS = {
