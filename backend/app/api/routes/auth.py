@@ -22,7 +22,7 @@ from app.models.user import User
 from app.schemas.auth import TokenRefresh, TokenResponse, UserCreate, UserLogin
 from app.schemas.user import UserResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 # ── POST /register ────────────────────────────────────────────────────────────

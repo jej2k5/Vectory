@@ -12,7 +12,7 @@ from app.models.collection import Collection
 from app.models.vector import VectorRecord
 from app.models.query import Query
 
-router = APIRouter()
+router = APIRouter(prefix="/system", tags=["system"])
 
 
 @router.get("/health", summary="Health check")
