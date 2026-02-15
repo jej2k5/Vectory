@@ -1,5 +1,6 @@
 import axios from "axios"
 import { getAccessToken, clearTokens } from "@/lib/auth"
+import type { ApiKey, Collection, EmbeddingModel, IngestionJob, PaginatedResponse } from "@/types"
 
 const api = axios.create({
   baseURL: "",
@@ -50,7 +51,7 @@ export const authApi = {
 // ---------------------------------------------------------------------------
 
 export const collectionsApi = {
-  list: async (skip = 0, limit = 50) => {
+  list: async (skip = 0, limit = 50): Promise<PaginatedResponse<Collection>> => {
     const res = await api.get("/api/collections/", { params: { skip, limit } })
     return res.data
   },
@@ -135,7 +136,7 @@ export const ingestionApi = {
     return res.data
   },
 
-  listJobs: async (params?: { collection_id?: string; status_filter?: string }) => {
+  listJobs: async (params?: { collection_id?: string; status_filter?: string }): Promise<PaginatedResponse<IngestionJob>> => {
     const res = await api.get("/api/ingestion/jobs", { params })
     return res.data
   },
@@ -166,7 +167,7 @@ export const ingestionApi = {
 // ---------------------------------------------------------------------------
 
 export const keysApi = {
-  list: async () => {
+  list: async (): Promise<ApiKey[]> => {
     const res = await api.get("/api/keys/")
     return res.data
   },
@@ -197,7 +198,7 @@ export const systemApi = {
     return res.data
   },
 
-  models: async () => {
+  models: async (): Promise<EmbeddingModel[]> => {
     const res = await api.get("/api/system/models")
     return res.data
   },
