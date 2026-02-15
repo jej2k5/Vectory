@@ -23,7 +23,7 @@ from app.schemas.collection import (
     CollectionUpdate,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/collections", tags=["collections"])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

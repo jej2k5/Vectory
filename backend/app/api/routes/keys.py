@@ -15,7 +15,7 @@ from app.models.api_key import ApiKey
 from app.models.user import User
 from app.schemas.api_key import ApiKeyCreate, ApiKeyCreateResponse, ApiKeyResponse, ApiKeyUpdate
 
-router = APIRouter()
+router = APIRouter(prefix="/keys", tags=["keys"])
 
 
 @router.get(

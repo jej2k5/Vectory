@@ -20,7 +20,7 @@ from app.models.user import User
 from app.schemas.vector import VectorCreate, VectorResponse, VectorUpdate
 from app.schemas.search import QueryRequest, QueryResponse, SearchResult, HybridSearchRequest
 
-router = APIRouter()
+router = APIRouter(prefix="/collections", tags=["vectors"])
 
 
 async def _get_collection_or_404(collection_id: _uuid.UUID, db: AsyncSession) -> Collection:

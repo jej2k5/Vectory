@@ -18,7 +18,7 @@ from app.models.ingestion_job import IngestionJob
 from app.models.user import User
 from app.schemas.ingestion import IngestionJobCreate, IngestionJobResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
