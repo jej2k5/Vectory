@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCreateIngestionJob } from "@/hooks/useIngestion"
+import { showToast } from "@/hooks/useToast"
 
 interface PipelineConfigProps {
   collectionId: string
@@ -23,20 +24,31 @@ export function PipelineConfig({ collectionId, filePath, fileName, fileSize }: P
   const createJob = useCreateIngestionJob()
 
   const handleStart = async () => {
-    await createJob.mutateAsync({
-      collectionId,
-      data: {
-        file_path: filePath,
-        file_name: fileName,
-        file_size: fileSize,
-        file_type: fileName.split(".").pop() || "txt",
-        config: {
-          chunking_strategy: chunkingStrategy,
-          chunk_size: chunkSize,
-          chunk_overlap: chunkOverlap,
+    try {
+      await createJob.mutateAsync({
+        collectionId,
+        data: {
+          file_path: filePath,
+          file_name: fileName,
+          file_size: fileSize,
+          file_type: fileName.split(".").pop() || "txt",
+          config: {
+            chunking_strategy: chunkingStrategy,
+            chunk_size: chunkSize,
+            chunk_overlap: chunkOverlap,
+          },
         },
-      },
-    })
+      })
+      showToast({
+        title: "Ingestion started",
+        description: `Processing ${fileName}`,
+        variant: "success",
+      })
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } } }
+      const msg = axiosErr.response?.data?.detail || "Failed to start ingestion"
+      showToast({ title: "Error", description: msg, variant: "destructive" })
+    }
   }
 
   return (
@@ -50,7 +62,7 @@ export function PipelineConfig({ collectionId, filePath, fileName, fileSize }: P
           <select
             value={chunkingStrategy}
             onChange={(e) => setChunkingStrategy(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="fixed_size">Fixed Size</option>
             <option value="sentence">Sentence</option>
@@ -63,7 +75,7 @@ export function PipelineConfig({ collectionId, filePath, fileName, fileSize }: P
             <Input
               type="number"
               value={chunkSize}
-              onChange={(e) => setChunkSize(parseInt(e.target.value))}
+              onChange={(e) => setChunkSize(parseInt(e.target.value) || 100)}
               min={100}
               max={2000}
             />
@@ -73,7 +85,7 @@ export function PipelineConfig({ collectionId, filePath, fileName, fileSize }: P
             <Input
               type="number"
               value={chunkOverlap}
-              onChange={(e) => setChunkOverlap(parseInt(e.target.value))}
+              onChange={(e) => setChunkOverlap(parseInt(e.target.value) || 0)}
               min={0}
               max={200}
             />
