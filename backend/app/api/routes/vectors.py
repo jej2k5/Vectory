@@ -19,6 +19,7 @@ from app.models.query import Query
 from app.models.user import User
 from app.schemas.vector import VectorCreate, VectorResponse, VectorUpdate
 from app.schemas.search import QueryRequest, QueryResponse, SearchResult, HybridSearchRequest
+from app.core.embeddings import EmbeddingProvider
 
 router = APIRouter(prefix="/collections", tags=["vectors"])
 
@@ -198,10 +199,11 @@ async def similarity_search(
     query_vector = payload.vector
     if query_vector is None:
         # In production, generate embedding from text. For now, return error.
-        raise HTTPException(
-            status_code=400,
-            detail="Text-based queries require an embedding provider to be configured. Please provide a vector directly.",
-        )
+        query_vector = EmbeddingProvider.get_embedding(
+           payload.text,
+           model=collection.embedding_model,
+           dimension=collection.dimension,
+       )
 
     if len(query_vector) != collection.dimension:
         raise HTTPException(
