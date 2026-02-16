@@ -50,7 +50,7 @@ async def _get_collection_or_404(
 
 
 @router.get(
-    "/",
+    "",
     response_model=CollectionList,
     summary="List all collections",
 )
@@ -80,7 +80,7 @@ async def list_collections(
 
 
 @router.post(
-    "/",
+    "",
     response_model=CollectionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new collection",

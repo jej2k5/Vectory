@@ -19,7 +19,7 @@ router = APIRouter(prefix="/keys", tags=["keys"])
 
 
 @router.get(
-    "/",
+    "",
     response_model=list[ApiKeyResponse],
     summary="List API keys",
 )
@@ -34,7 +34,7 @@ async def list_keys(
 
 
 @router.post(
-    "/",
+    "",
     response_model=ApiKeyCreateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new API key",

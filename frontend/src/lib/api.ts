@@ -135,7 +135,7 @@ export const authApi = {
 
 export const collectionsApi = {
   list: async (skip = 0, limit = 50): Promise<PaginatedResponse<Collection>> => {
-    const res = await api.get("/api/collections/", { params: { skip, limit } })
+    const res = await api.get("/api/collections", { params: { skip, limit } })
     return res.data
   },
 
@@ -157,7 +157,7 @@ export const collectionsApi = {
     distance_metric?: string
     index_type?: string
   }): Promise<Collection> => {
-    const res = await api.post("/api/collections/", data)
+    const res = await api.post("/api/collections", data)
     return res.data
   },
 
@@ -292,12 +292,12 @@ export const ingestionApi = {
 
 export const keysApi = {
   list: async (): Promise<ApiKey[]> => {
-    const res = await api.get("/api/keys/")
+    const res = await api.get("/api/keys")
     return res.data
   },
 
   create: async (data: { name: string }): Promise<ApiKeyCreateResponse> => {
-    const res = await api.post("/api/keys/", data)
+    const res = await api.post("/api/keys", data)
     return res.data
   },
 
