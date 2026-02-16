@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.collection import Collection
@@ -22,6 +23,9 @@ router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Streaming upload configuration
+STREAM_CHUNK_SIZE = 8192  # 8KB chunks for memory-efficient streaming
 
 
 @router.post(
@@ -43,18 +47,37 @@ async def upload_file(
             detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(allowed_extensions)}",
         )
 
-    # Save file
+    # Server-side file size validation
+    # Note: file.size may not be available in all cases, so we validate during streaming
+    max_size_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    if hasattr(file, 'size') and file.size and file.size > max_size_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size ({file.size / 1024 / 1024:.1f}MB) exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE_MB}MB",
+        )
+
+    # Save file with streaming to avoid loading entire file into memory
     file_id = str(_uuid.uuid4())
     file_path = os.path.join(UPLOAD_DIR, f"{file_id}{ext}")
 
-    content = await file.read()
+    total_size = 0
     with open(file_path, "wb") as f:
-        f.write(content)
+        while chunk := await file.read(STREAM_CHUNK_SIZE):
+            total_size += len(chunk)
+            # Validate size during streaming (in case file.size wasn't available)
+            if total_size > max_size_bytes:
+                f.close()
+                os.remove(file_path)  # Clean up partial file
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File size exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE_MB}MB",
+                )
+            f.write(chunk)
 
     return {
         "file_path": file_path,
         "file_name": file.filename,
-        "file_size": len(content),
+        "file_size": total_size,
         "file_type": ext.lstrip("."),
         "collection_id": collection_id,
     }

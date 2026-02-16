@@ -168,3 +168,31 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_vector_count_trigger
 AFTER INSERT OR DELETE ON vectors
 FOR EACH ROW EXECUTE FUNCTION update_collection_vector_count();
+
+-- Helper function to enable/disable the vector count trigger during bulk operations
+-- This improves performance for large ingestions by avoiding per-row trigger overhead
+CREATE OR REPLACE FUNCTION set_vector_count_trigger_enabled(enabled BOOLEAN)
+RETURNS void AS $$
+BEGIN
+    IF enabled THEN
+        ALTER TABLE vectors ENABLE TRIGGER update_vector_count_trigger;
+    ELSE
+        ALTER TABLE vectors DISABLE TRIGGER update_vector_count_trigger;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Helper function to manually update vector count for a collection
+-- Use this after bulk inserts with the trigger disabled
+CREATE OR REPLACE FUNCTION refresh_collection_vector_count(p_collection_id UUID)
+RETURNS void AS $$
+BEGIN
+    UPDATE collections
+    SET vector_count = (
+        SELECT COUNT(*)
+        FROM vectors
+        WHERE collection_id = p_collection_id
+    )
+    WHERE id = p_collection_id;
+END;
+$$ LANGUAGE plpgsql;

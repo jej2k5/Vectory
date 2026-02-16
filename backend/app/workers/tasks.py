@@ -78,6 +78,16 @@ def process_ingestion_job(self, job_id: str):
         batch_size = 50
         dimension = collection.dimension
 
+        # OPTIMIZATION: For very large ingestions (>10,000 chunks), consider:
+        # 1. Disabling the per-row vector count trigger:
+        #    from sqlalchemy import text
+        #    session.execute(text("SELECT set_vector_count_trigger_enabled(false)"))
+        # 2. Process all chunks
+        # 3. Re-enable trigger and manually refresh count:
+        #    session.execute(text("SELECT set_vector_count_trigger_enabled(true)"))
+        #    session.execute(text("SELECT refresh_collection_vector_count(:cid)"), {"cid": str(collection.id)})
+        # This can improve bulk insert performance by 10-100x for large files.
+
         for i in range(0, len(chunks), batch_size):
             if job.status == "cancelled":
                 break
