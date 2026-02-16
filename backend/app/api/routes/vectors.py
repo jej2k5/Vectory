@@ -229,15 +229,15 @@ async def similarity_search(
 
     filter_clause = ""
     if payload.filters:
-        filter_clause = "AND metadata @> :filters::jsonb"
+        filter_clause = "AND metadata @> CAST(:filters AS jsonb)"
 
     sql = text(f"""
         SELECT id, collection_id, metadata, text_content, source_file, chunk_index,
-               vector {op} :query_vector::vector AS distance
+               vector {op} CAST(:query_vector AS vector) AS distance
         FROM vectors
         WHERE collection_id = :collection_id
         {filter_clause}
-        ORDER BY vector {op} :query_vector::vector
+        ORDER BY vector {op} CAST(:query_vector AS vector)
         LIMIT :top_k
     """)
 
@@ -327,7 +327,7 @@ async def hybrid_search(
         vector_str = "[" + ",".join(str(v) for v in payload.vector) + "]"
         sql = text(f"""
             SELECT id, collection_id, metadata, text_content, source_file, chunk_index,
-                   (1.0 - (vector {op} :query_vector::vector)) * :vector_weight +
+                   (1.0 - (vector {op} CAST(:query_vector AS vector))) * :vector_weight +
                    ts_rank(to_tsvector('english', COALESCE(text_content, '')), plainto_tsquery('english', :query_text)) * :text_weight
                    AS combined_score
             FROM vectors
