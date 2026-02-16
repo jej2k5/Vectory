@@ -3,10 +3,12 @@
 import { useCallback, useState } from "react"
 import { useDropzone } from "react-dropzone"
 import { Upload, FileText, X, AlertCircle } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { useUploadFile } from "@/hooks/useIngestion"
 import { formatBytes } from "@/lib/utils"
 import { showToast } from "@/hooks/useToast"
+import { systemApi } from "@/lib/api"
 
 interface FileUploaderProps {
   collectionId: string
@@ -18,16 +20,26 @@ export function FileUploader({ collectionId, onUploadComplete }: FileUploaderPro
   const [error, setError] = useState("")
   const uploadMutation = useUploadFile()
 
+  // Fetch system info to get max upload size
+  const { data: systemInfo } = useQuery({
+    queryKey: ["system-info"],
+    queryFn: () => systemApi.info(),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  })
+
+  const maxUploadSizeMB = systemInfo?.max_upload_size_mb || 100
+  const maxUploadSizeBytes = maxUploadSizeMB * 1024 * 1024
+
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: unknown[]) => {
     setError("")
     if (rejectedFiles.length > 0) {
-      setError("File type not supported or exceeds 100MB limit")
+      setError(`File type not supported or exceeds ${maxUploadSizeMB}MB limit`)
       return
     }
     if (acceptedFiles.length > 0) {
       setSelectedFile(acceptedFiles[0])
     }
-  }, [])
+  }, [maxUploadSizeMB])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -40,7 +52,7 @@ export function FileUploader({ collectionId, onUploadComplete }: FileUploaderPro
       "text/markdown": [".md"],
     },
     maxFiles: 1,
-    maxSize: 100 * 1024 * 1024,
+    maxSize: maxUploadSizeBytes,
   })
 
   const handleUpload = async () => {
@@ -83,7 +95,7 @@ export function FileUploader({ collectionId, onUploadComplete }: FileUploaderPro
           {isDragActive ? "Drop the file here..." : "Drag & drop a file, or click to browse"}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          PDF, DOCX, TXT, CSV, JSON, MD (max 100MB)
+          PDF, DOCX, TXT, CSV, JSON, MD (max {maxUploadSizeMB}MB)
         </p>
       </div>
 

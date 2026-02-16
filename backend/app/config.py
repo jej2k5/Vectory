@@ -54,6 +54,16 @@ class Settings(BaseSettings):
 
     # ── Rate Limiting & Upload ────────────────────────────────────────────
     RATE_LIMIT_PER_MINUTE: int = 100
+
+    # Maximum file size for uploads (MB)
+    # This limit exists because:
+    # 1. Files are streamed but parsers may load content into memory (~1-2x file size)
+    # 2. Parsers create multiple in-memory copies for some formats (~2-4x for Markdown)
+    # 3. All chunks are materialized during processing (~2x file size)
+    # 4. Large files can monopolize Celery workers and database resources
+    # 5. Embedding API costs scale with file size (OpenAI charges per token)
+    # Recommended: Set based on available RAM (allow 4-5x file size as headroom)
+    # For example: 2GB RAM available → max ~400MB file size recommended
     MAX_UPLOAD_SIZE_MB: int = 100
 
     # ── Logging ───────────────────────────────────────────────────────────

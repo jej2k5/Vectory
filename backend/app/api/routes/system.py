@@ -7,6 +7,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
+from app.config import settings
 from app.database import get_db
 from app.models.collection import Collection
 from app.models.vector import VectorRecord
@@ -89,4 +90,5 @@ async def system_info():
         "supported_index_types": ["hnsw", "ivfflat", "flat"],
         "max_dimension": 4096,
         "max_batch_size": 1000,
+        "max_upload_size_mb": settings.MAX_UPLOAD_SIZE_MB,
     }
