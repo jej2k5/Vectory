@@ -135,8 +135,69 @@ async def verify_api_key(
     return api_key_record
 
 
+async def get_current_user_or_api_key(
+    token: str | None = Depends(oauth2_scheme_optional),
+    api_key: str | None = Security(api_key_header),
+    db: AsyncSession = Depends(get_db),
+):
+    """Accept either a JWT Bearer token or an X-API-Key header.
+
+    Returns the owning User instance or raises 401.
+    Useful for endpoints called by both the frontend (JWT) and the
+    ingestion pipeline service (API key).
+    """
+    # Try JWT first
+    if token is not None:
+        try:
+            payload = decode_access_token(token)
+            user_id_str: str | None = payload.get("sub")
+            if user_id_str is not None:
+                user_id = UUID(user_id_str)
+                from app.models.user import User  # noqa: WPS433
+
+                result = await db.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
+                if user is not None and user.is_active:
+                    return user
+        except (JWTError, ValueError):
+            pass
+
+    # Fall back to API key
+    if api_key is not None:
+        key_hash = hash_api_key(api_key)
+
+        from app.models.api_key import ApiKey  # noqa: WPS433
+        from sqlalchemy.orm import selectinload
+
+        result = await db.execute(
+            select(ApiKey)
+            .options(selectinload(ApiKey.user))
+            .where(ApiKey.key_hash == key_hash)
+        )
+        record = result.scalar_one_or_none()
+
+        if record is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid API key",
+            )
+        if not record.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="API key has been revoked",
+            )
+        return record.user
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 __all__ = [
     "get_current_user",
+    "get_current_user_or_api_key",
     "get_optional_user",
     "verify_api_key",
 ]

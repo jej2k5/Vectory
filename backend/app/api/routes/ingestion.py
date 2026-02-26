@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user_or_api_key
 from app.models.collection import Collection
 from app.models.ingestion_job import IngestionJob
 from app.models.user import User
@@ -36,7 +36,7 @@ STREAM_CHUNK_SIZE = 8192  # 8KB chunks for memory-efficient streaming
 async def upload_file(
     file: UploadFile = File(...),
     collection_id: str = Form(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_api_key),
 ):
     # Validate file type
     allowed_extensions = {".pdf", ".docx", ".txt", ".csv", ".json", ".md"}
@@ -93,7 +93,7 @@ async def create_job(
     collection_id: _uuid.UUID,
     payload: IngestionJobCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_or_api_key),
 ):
     # Verify collection exists
     result = await db.execute(select(Collection).where(Collection.id == collection_id))
