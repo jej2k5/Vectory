@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.dependencies import get_current_user_or_api_key
+from app.dependencies import get_current_user, get_current_user_or_api_key
 from app.models.collection import Collection
 from app.models.ingestion_job import IngestionJob
 from app.models.user import User
