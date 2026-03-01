@@ -110,6 +110,7 @@ def process_ingestion_job(self, job_id: str):
 
                     record = VectorRecord(
                         collection_id=collection.id,
+                        job_id=job.id,
                         vector=vector,
                         metadata_={"source": job.file_name, "chunk_index": i + idx},
                         text_content=chunk_text,

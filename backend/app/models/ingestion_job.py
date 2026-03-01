@@ -82,6 +82,10 @@ class IngestionJob(Base):
         "User",
         back_populates="ingestion_jobs",
     )
+    vectors: Mapped[list[VectorRecord]] = relationship(
+        "VectorRecord",
+        back_populates="ingestion_job",
+    )
 
     def __repr__(self) -> str:
         return (

@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -16,8 +16,10 @@ from app.database import get_db
 from app.dependencies import get_current_user, get_current_user_or_api_key
 from app.models.collection import Collection
 from app.models.ingestion_job import IngestionJob
+from app.models.vector import VectorRecord
 from app.models.user import User
-from app.schemas.ingestion import IngestionJobCreate, IngestionJobResponse
+from app.schemas.ingestion import IngestionJobCreate, IngestionJobResponse, ReIngestRequest
+from app.schemas.vector import VectorResponse
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
@@ -265,6 +267,96 @@ async def retry_job(
         pass
 
     return job
+
+
+@router.get(
+    "/jobs/{job_id}/vectors",
+    summary="List vectors produced by an ingestion job",
+)
+async def list_job_vectors(
+    job_id: _uuid.UUID,
+    skip: int = 0,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(IngestionJob).where(IngestionJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Ingestion job not found.")
+
+    count_result = await db.execute(
+        select(func.count(VectorRecord.id)).where(VectorRecord.job_id == job_id)
+    )
+    total = count_result.scalar_one()
+
+    vectors_result = await db.execute(
+        select(VectorRecord)
+        .where(VectorRecord.job_id == job_id)
+        .order_by(VectorRecord.chunk_index)
+        .offset(skip)
+        .limit(limit)
+    )
+    vectors = list(vectors_result.scalars().all())
+
+    return {
+        "items": [VectorResponse.model_validate(v) for v in vectors],
+        "total": total,
+        "job_id": str(job_id),
+    }
+
+
+@router.post(
+    "/jobs/{job_id}/re-ingest",
+    response_model=IngestionJobResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Delete old job vectors and dispatch a new ingestion for the same document",
+)
+async def re_ingest_job(
+    job_id: _uuid.UUID,
+    payload: ReIngestRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(IngestionJob).where(IngestionJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Ingestion job not found.")
+
+    if job.status in ("pending", "processing"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot re-ingest a job that is currently {job.status}.",
+        )
+
+    # Delete all vectors produced by the original job
+    await db.execute(delete(VectorRecord).where(VectorRecord.job_id == job_id))
+
+    # Build config: original config merged with any overrides from the request
+    merged_config: dict | None = job.config
+    if payload and payload.config:
+        merged_config = {**(job.config or {}), **payload.config}
+
+    new_job = IngestionJob(
+        collection_id=job.collection_id,
+        file_path=job.file_path,
+        file_name=job.file_name,
+        file_size=job.file_size,
+        file_type=job.file_type,
+        config=merged_config,
+        created_by=current_user.id,
+        status="pending",
+    )
+    db.add(new_job)
+    await db.commit()
+    await db.refresh(new_job)
+
+    try:
+        from app.workers.tasks import process_ingestion_job
+        process_ingestion_job.delay(str(new_job.id))
+    except Exception:
+        pass  # Celery not available; job stays pending
+
+    return new_job
 
 
 @router.get(

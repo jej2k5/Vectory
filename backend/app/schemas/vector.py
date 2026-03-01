@@ -33,6 +33,7 @@ class VectorResponse(BaseModel):
 
     id: UUID
     collection_id: UUID
+    job_id: UUID | None = None
     metadata: dict | None = Field(None, alias="metadata_")
     text_content: str | None = None
     source_file: str | None = None
