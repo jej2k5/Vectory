@@ -7,7 +7,7 @@ import time
 import uuid as _uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -179,6 +179,57 @@ async def batch_delete_vectors(
     )
     await db.commit()
     return {"deleted": result.rowcount}
+
+
+@router.delete(
+    "/{collection_id}/vectors/by-source/{filename}",
+    summary="Delete all vectors from a source document",
+)
+async def delete_vectors_by_source(
+    collection_id: _uuid.UUID,
+    filename: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    await _get_collection_or_404(collection_id, db)
+    result = await db.execute(
+        delete(VectorRecord).where(
+            VectorRecord.collection_id == collection_id,
+            VectorRecord.source_file == filename,
+        )
+    )
+    await db.commit()
+    return {"deleted": result.rowcount, "collection_id": str(collection_id), "source_file": filename}
+
+
+@router.patch(
+    "/{collection_id}/vectors/by-source/{filename}",
+    summary="Merge-update metadata for all vectors from a source document",
+)
+async def patch_vectors_by_source(
+    collection_id: _uuid.UUID,
+    filename: str,
+    metadata: dict = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    await _get_collection_or_404(collection_id, db)
+    import json
+    result = await db.execute(
+        text("""
+            UPDATE vectors
+            SET metadata = COALESCE(metadata, '{}'::jsonb) || CAST(:patch AS jsonb)
+            WHERE collection_id = :collection_id
+              AND source_file = :filename
+        """),
+        {
+            "patch": json.dumps(metadata),
+            "collection_id": str(collection_id),
+            "filename": filename,
+        },
+    )
+    await db.commit()
+    return {"updated": result.rowcount, "collection_id": str(collection_id), "source_file": filename}
 
 
 @router.post(

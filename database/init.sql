@@ -50,6 +50,7 @@ CREATE TABLE vectors (
     source_file VARCHAR(500),
     chunk_index INTEGER,
     fingerprint VARCHAR(64),
+    job_id UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -89,6 +90,13 @@ CREATE TABLE ingestion_jobs (
 CREATE INDEX idx_ingestion_jobs_collection ON ingestion_jobs(collection_id);
 CREATE INDEX idx_ingestion_jobs_status ON ingestion_jobs(status);
 CREATE INDEX idx_ingestion_jobs_created_at ON ingestion_jobs(created_at);
+
+-- Link vectors back to the job that produced them (added after ingestion_jobs to satisfy FK ordering)
+ALTER TABLE vectors
+    ADD CONSTRAINT fk_vectors_job_id FOREIGN KEY (job_id)
+    REFERENCES ingestion_jobs(id) ON DELETE SET NULL;
+
+CREATE INDEX idx_vectors_job_id ON vectors(job_id);
 
 -- API keys table
 CREATE TABLE api_keys (

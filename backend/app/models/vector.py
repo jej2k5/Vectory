@@ -39,6 +39,12 @@ class VectorRecord(Base):
         String(64),
         index=True,
     )
+    job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingestion_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -54,6 +60,10 @@ class VectorRecord(Base):
     # Relationships
     collection: Mapped[Collection] = relationship(
         "Collection",
+        back_populates="vectors",
+    )
+    ingestion_job: Mapped[IngestionJob | None] = relationship(
+        "IngestionJob",
         back_populates="vectors",
     )
 
