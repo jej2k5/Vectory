@@ -32,6 +32,12 @@ class IngestionJobUpdate(BaseModel):
     failed_chunks: int | None = Field(None, ge=0)
 
 
+class ReIngestRequest(BaseModel):
+    """Optional body for re-ingest: override chunking config."""
+
+    config: dict | None = Field(None, description="Chunking / processing config overrides")
+
+
 class IngestionJobResponse(BaseModel):
     """Schema for ingestion job responses."""
 
