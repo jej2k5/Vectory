@@ -11,7 +11,7 @@ A high-performance, self-hosted vector database with built-in ingestion pipeline
 - **Admin Dashboard**: Modern web UI for managing collections and monitoring jobs
 - **Developer-Friendly API**: RESTful API with Python and JavaScript SDKs
 - **Self-Hostable**: Docker-based deployment with PostgreSQL + pgvector
-- **Open Source**: MIT License
+- **Open Source**: Apache License 2.0
 
 ## Quick Start
 
@@ -82,7 +82,7 @@ We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guideline
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE)
+Apache License 2.0 - see [LICENSE](./LICENSE)
 
 ## Support
 
