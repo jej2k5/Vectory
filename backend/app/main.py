@@ -39,6 +39,7 @@ _try_import_router("app.api.routes.vectors")
 _try_import_router("app.api.routes.ingestion")
 _try_import_router("app.api.routes.keys")
 _try_import_router("app.api.routes.system")
+_try_import_router("app.api.routes.mcp")
 
 
 # ---------------------------------------------------------------------------

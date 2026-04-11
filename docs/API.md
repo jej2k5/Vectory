@@ -2,6 +2,22 @@
 
 ## Authentication
 
+---
+
+## MCP Discovery
+
+### GET /api/mcp
+Return MCP server metadata and discovery links.
+
+### GET /api/mcp/tools
+List MCP tool definitions mapped to Vectory REST endpoints.
+
+### GET /api/mcp/resources
+List MCP resource handles mapped to Vectory REST endpoints.
+
+---
+
+
 All authenticated endpoints require a JWT Bearer token in the `Authorization` header:
 
 ```
