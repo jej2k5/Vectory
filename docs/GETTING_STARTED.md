@@ -30,6 +30,7 @@ Access:
 - **Dashboard**: http://localhost:3000
 - **API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/api/docs
+- **MCP Discovery**: http://localhost:8000/api/mcp
 - **MinIO Console**: http://localhost:9001 (minioadmin/minioadmin)
 
 ## Local Development
@@ -122,6 +123,37 @@ curl -X POST http://localhost:8000/api/collections/COLLECTION_ID/query \
     "top_k": 5
   }'
 ```
+
+
+## Using MCP (Layered on REST API)
+
+### 1. Discover MCP Capabilities
+
+```bash
+curl http://localhost:8000/api/mcp
+```
+
+### 2. List Available MCP Tools
+
+```bash
+curl http://localhost:8000/api/mcp/tools
+```
+
+### 3. Invoke a Tool (example: list collections)
+
+```bash
+curl -X POST http://localhost:8000/api/mcp/tools/list_collections/invoke \
+  -H "Content-Type: application/json" \
+  -d '{"args": {"skip": 0, "limit": 10}}'
+```
+
+### 4. Read an MCP Resource
+
+```bash
+curl http://localhost:8000/api/mcp/resources/collections
+```
+
+MCP requests are forwarded to existing REST endpoints, so auth and validation behavior stays consistent.
 
 ## Using the Ingestion Pipeline
 

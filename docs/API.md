@@ -2,6 +2,30 @@
 
 ## Authentication
 
+---
+
+## MCP Discovery
+
+The MCP surface is layered **on top of** existing REST endpoints and forwards tool/resource operations to the API routes.
+
+### GET /api/mcp
+Return MCP server metadata and discovery links.
+
+### GET /api/mcp/tools
+List MCP tool definitions mapped to Vectory REST endpoints.
+
+### POST /api/mcp/tools/:tool_name/invoke
+Invoke an MCP tool by forwarding arguments to the mapped REST endpoint.
+
+### GET /api/mcp/resources
+List MCP resource handles mapped to Vectory REST endpoints.
+
+### GET /api/mcp/resources/:resource_name
+Read an MCP resource by forwarding to the mapped REST endpoint.
+
+---
+
+
 All authenticated endpoints require a JWT Bearer token in the `Authorization` header:
 
 ```
