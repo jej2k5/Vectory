@@ -10,6 +10,7 @@ A high-performance, self-hosted vector database with built-in ingestion pipeline
 - **Hybrid Search**: Combine vector similarity with metadata filtering
 - **Admin Dashboard**: Modern web UI for managing collections and monitoring jobs
 - **Developer-Friendly API**: RESTful API with Python and JavaScript SDKs
+- **MCP Surface**: Model Context Protocol discovery + invocation routes layered on top of REST APIs
 - **Self-Hostable**: Docker-based deployment with PostgreSQL + pgvector
 - **Open Source**: Apache License 2.0
 
@@ -32,7 +33,8 @@ docker-compose up -d
 Access at:
 - **Dashboard**: http://localhost:3000
 - **API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
+- **API Docs**: http://localhost:8000/api/docs
+- **MCP Discovery**: http://localhost:8000/api/mcp
 
 ### Local Development
 
@@ -60,6 +62,19 @@ vectory/
 ├── docker-compose.yml
 └── README.md
 ```
+
+
+## MCP Surface (Layered on REST)
+
+Vectory exposes an MCP routing surface that forwards tool/resource operations to existing REST endpoints.
+
+- Discovery: `GET /api/mcp`
+- Tool catalog: `GET /api/mcp/tools`
+- Tool invocation: `POST /api/mcp/tools/{tool_name}/invoke`
+- Resource catalog: `GET /api/mcp/resources`
+- Resource read: `GET /api/mcp/resources/{resource_name}`
+
+This means MCP clients can call Vectory capabilities without bypassing core API logic, auth, and validation.
 
 ## Documentation
 

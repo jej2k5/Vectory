@@ -41,6 +41,7 @@
 - JWT authentication + API key support
 - Vector operations using pgvector SQL operators
 - Pydantic v2 request/response validation
+- MCP routing surface layered over REST endpoints for tool/resource discovery and invocation
 
 ### Frontend (Next.js 14)
 - App Router with server/client components
@@ -90,6 +91,16 @@ Client -> POST /api/collections/:id/query
        -> Apply metadata filters (JSONB @>)
        -> Record query analytics
        -> Return ranked results with scores
+```
+
+
+### MCP Overlay Flow
+```
+MCP Client -> /api/mcp/tools/:tool_name/invoke
+          -> Resolve MCP mapping (tool/resource -> REST route)
+          -> Forward request to internal REST endpoint via ASGI transport
+          -> Reuse existing auth/validation/business logic
+          -> Return REST JSON as MCP result payload
 ```
 
 ### Ingestion Pipeline
