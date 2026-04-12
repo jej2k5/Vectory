@@ -226,7 +226,8 @@ pytest tests/ -v
 - Ensure Redis is accessible from the worker
 
 **Frontend can't reach backend:**
-- Verify NEXT_PUBLIC_API_URL is set correctly
+- In Docker: ensure `BACKEND_URL` is set to `http://backend:8000` in `docker-compose.yml` (set by default)
+- Local dev: `BACKEND_URL` or `NEXT_PUBLIC_API_URL` should point to the running backend (defaults to `http://localhost:8000`)
 - Check CORS_ORIGINS includes the frontend URL
 
 **Vector dimension mismatch:**
