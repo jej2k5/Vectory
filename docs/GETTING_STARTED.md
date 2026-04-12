@@ -226,9 +226,10 @@ pytest tests/ -v
 - Ensure Redis is accessible from the worker
 
 **Frontend can't reach backend:**
-- In Docker: ensure `BACKEND_URL` is set to `http://backend:8000` in `docker-compose.yml` (set by default)
-- Local dev: `BACKEND_URL` or `NEXT_PUBLIC_API_URL` should point to the running backend (defaults to `http://localhost:8000`)
-- Check CORS_ORIGINS includes the frontend URL
+- Check `BACKEND_URL` and `BACKEND_PORT` are set correctly in `.env`
+- `BACKEND_URL` should use the Docker service name: `http://backend:<BACKEND_PORT>`
+- If changing `BACKEND_PORT`, also update `BACKEND_URL` and `NEXT_PUBLIC_API_URL` to match
+- Check `CORS_ORIGINS` includes the frontend URL
 
 **Vector dimension mismatch:**
 - Ensure your vectors match the collection's configured dimension

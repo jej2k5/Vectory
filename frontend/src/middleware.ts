@@ -11,13 +11,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Allow static assets and API routes (handled by rewrites)
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.includes(".")
-  ) {
+  // Allow static assets
+  if (pathname.startsWith("/_next") || pathname.includes(".")) {
     return NextResponse.next()
+  }
+
+  // Proxy API requests to the backend at runtime
+  if (pathname.startsWith("/api/")) {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:8000"
+    return NextResponse.rewrite(new URL(pathname + request.nextUrl.search, backendUrl))
   }
 
   // Check for auth token in cookies (set by client-side auth)
