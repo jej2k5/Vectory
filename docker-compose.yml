@@ -82,7 +82,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       LOG_LEVEL: info
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -129,11 +129,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:${BACKEND_PORT:-8000}}
     container_name: vectory-frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:${BACKEND_PORT:-8000}}
       BACKEND_URL: http://backend:8000
     ports:
       - "3000:3000"
