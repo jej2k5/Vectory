@@ -37,6 +37,38 @@ def _fingerprint(vector: list[float]) -> str:
     return hashlib.sha256(data.encode()).hexdigest()
 
 
+@router.get(
+    "/{collection_id}/vectors",
+    summary="List vectors in a collection",
+)
+async def list_vectors(
+    collection_id: _uuid.UUID,
+    skip: int = 0,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_collection_or_404(collection_id, db)
+
+    count_result = await db.execute(
+        select(func.count(VectorRecord.id)).where(VectorRecord.collection_id == collection_id)
+    )
+    total = count_result.scalar_one()
+
+    vectors_result = await db.execute(
+        select(VectorRecord)
+        .where(VectorRecord.collection_id == collection_id)
+        .order_by(VectorRecord.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    vectors = list(vectors_result.scalars().all())
+
+    return {
+        "items": [VectorResponse.model_validate(v) for v in vectors],
+        "total": total,
+    }
+
+
 @router.post(
     "/{collection_id}/vectors",
     status_code=status.HTTP_201_CREATED,

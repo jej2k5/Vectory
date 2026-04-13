@@ -37,6 +37,12 @@ TOOLS: dict[str, MCPMapping] = {
         method="POST",
         path="/api/collections",
     ),
+    "list_vectors": MCPMapping(
+        name="list_vectors",
+        description="List vectors in a collection with pagination.",
+        method="GET",
+        path="/api/collections/{collection_id}/vectors",
+    ),
     "insert_vectors": MCPMapping(
         name="insert_vectors",
         description="Insert vectors into a collection.",

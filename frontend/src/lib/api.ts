@@ -8,6 +8,7 @@ import type {
   IngestionJob,
   PaginatedResponse,
   User,
+  VectorResult,
 } from "@/types"
 
 const api = axios.create({
@@ -190,6 +191,13 @@ export const collectionsApi = {
 // ---------------------------------------------------------------------------
 
 export const vectorsApi = {
+  list: async (collectionId: string, skip = 0, limit = 50) => {
+    const res = await api.get(`/api/collections/${collectionId}/vectors`, {
+      params: { skip, limit },
+    })
+    return res.data as { items: VectorResult[]; total: number }
+  },
+
   query: async (
     collectionId: string,
     data: {
