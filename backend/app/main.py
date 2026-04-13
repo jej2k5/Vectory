@@ -100,6 +100,15 @@ app.add_middleware(
 for router in _routers:
     app.include_router(router, prefix="/api")
 
+# ── Also expose MCP at /mcp (standard MCP discovery path) ───────────────────
+
+try:
+    from app.api.routes.mcp import router as mcp_router
+
+    app.include_router(mcp_router)
+except (ImportError, AttributeError):
+    pass
+
 
 # ── Root health-check (outside /api prefix) ───────────────────────────────────
 
