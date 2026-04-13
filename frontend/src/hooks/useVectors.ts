@@ -24,6 +24,18 @@ export function useInsertVector(collectionId: string) {
   })
 }
 
+export function useUpdateVector(collectionId: string) {
+  return useMutation({
+    mutationFn: ({
+      vectorId,
+      data,
+    }: {
+      vectorId: string
+      data: { metadata?: Record<string, any>; text_content?: string }
+    }) => vectorsApi.update(collectionId, vectorId, data),
+  })
+}
+
 export function useDeleteVector(collectionId: string) {
   return useMutation({
     mutationFn: (vectorId: string) => vectorsApi.delete(collectionId, vectorId),

@@ -61,6 +61,18 @@ TOOLS: dict[str, MCPMapping] = {
         method="GET",
         path="/api/system/metrics",
     ),
+    "update_vector": MCPMapping(
+        name="update_vector",
+        description="Update a vector's text content, metadata, or embedding.",
+        method="PATCH",
+        path="/api/collections/{collection_id}/vectors/{vector_id}",
+    ),
+    "delete_vector": MCPMapping(
+        name="delete_vector",
+        description="Delete a single vector from a collection.",
+        method="DELETE",
+        path="/api/collections/{collection_id}/vectors/{vector_id}",
+    ),
 }
 
 RESOURCES: dict[str, MCPMapping] = {

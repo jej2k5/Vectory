@@ -229,6 +229,15 @@ export const vectorsApi = {
     return res.data
   },
 
+  update: async (
+    collectionId: string,
+    vectorId: string,
+    data: { metadata?: Record<string, unknown>; text_content?: string },
+  ) => {
+    const res = await api.patch(`/api/collections/${collectionId}/vectors/${vectorId}`, data)
+    return res.data
+  },
+
   delete: async (collectionId: string, vectorId: string) => {
     const res = await api.delete(`/api/collections/${collectionId}/vectors/${vectorId}`)
     return res.data
