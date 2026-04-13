@@ -1,8 +1,16 @@
 "use client"
 
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { vectorsApi } from "@/lib/api"
 import type { QueryRequest } from "@/types"
+
+export function useCollectionVectors(collectionId: string, skip = 0, limit = 50) {
+  return useQuery({
+    queryKey: ["collection-vectors", collectionId, skip, limit],
+    queryFn: () => vectorsApi.list(collectionId, skip, limit),
+    enabled: !!collectionId,
+  })
+}
 
 export function useVectorQuery(collectionId: string) {
   return useMutation({

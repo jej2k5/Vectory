@@ -16,6 +16,7 @@ import { PipelineConfig } from "@/components/ingestion/PipelineConfig"
 import { useCollection, useCollectionStats, useDeleteCollection } from "@/hooks/useCollections"
 import { useIngestionJobs } from "@/hooks/useIngestion"
 import { JobMonitor } from "@/components/ingestion/JobMonitor"
+import { VectorBrowser } from "@/components/vectors/VectorBrowser"
 import { showToast } from "@/hooks/useToast"
 
 export default function CollectionDetailPage() {
@@ -111,12 +112,17 @@ export default function CollectionDetailPage() {
         <Tabs defaultValue="query">
           <TabsList>
             <TabsTrigger value="query">Query</TabsTrigger>
+            <TabsTrigger value="vectors">Vectors</TabsTrigger>
             <TabsTrigger value="ingest">Ingest</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
           </TabsList>
 
           <TabsContent value="query" className="mt-4">
             <QueryPlayground collectionId={collectionId} />
+          </TabsContent>
+
+          <TabsContent value="vectors" className="mt-4">
+            <VectorBrowser collectionId={collectionId} />
           </TabsContent>
 
           <TabsContent value="ingest" className="mt-4 space-y-6">

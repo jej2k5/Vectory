@@ -28,7 +28,7 @@ async def test_mcp_tools_list_includes_vector_mutation_tools():
     tool_names = [tool["name"] for tool in body["tools"]]
     assert "update_vector" in tool_names
     assert "delete_vector" in tool_names
-    assert len(body["tools"]) == 8
+    assert len(body["tools"]) == 9
 
 
 async def test_mcp_tool_invoke_is_layered_over_rest_api():
