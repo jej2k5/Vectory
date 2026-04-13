@@ -117,7 +117,7 @@ export function QueryPlayground({ collectionId }: QueryPlaygroundProps) {
         </CardContent>
       </Card>
 
-      <ResultsView response={results} isLoading={queryMutation.isPending} />
+      <ResultsView response={results} isLoading={queryMutation.isPending} collectionId={collectionId} />
     </div>
   )
 }

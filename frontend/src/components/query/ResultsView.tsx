@@ -11,9 +11,10 @@ import type { QueryResponse, VectorResult } from "@/types"
 interface ResultsViewProps {
   response: QueryResponse | null
   isLoading: boolean
+  collectionId?: string
 }
 
-export function ResultsView({ response, isLoading }: ResultsViewProps) {
+export function ResultsView({ response, isLoading, collectionId }: ResultsViewProps) {
   if (isLoading) {
     return (
       <Card>
@@ -53,6 +54,7 @@ export function ResultsView({ response, isLoading }: ResultsViewProps) {
             total={response.total}
             page={1}
             onPageChange={() => {}}
+            collectionId={collectionId}
           />
         </TabsContent>
         <TabsContent value="visualization">
