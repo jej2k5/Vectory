@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -109,6 +111,33 @@ class ToolInvokeRequest(BaseModel):
     args: dict[str, Any] = Field(default_factory=dict)
 
 
+class JsonRpcRequest(BaseModel):
+    """Incoming JSON-RPC 2.0 request envelope."""
+
+    jsonrpc: str = Field("2.0", pattern=r"^2\.0$")
+    id: int | str | None = None
+    method: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+def _jsonrpc_success(request_id: int | str | None, result: Any) -> dict[str, Any]:
+    """Build a JSON-RPC 2.0 success response dict."""
+    return {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+
+def _jsonrpc_error(
+    request_id: int | str | None,
+    code: int,
+    message: str,
+    data: Any = None,
+) -> dict[str, Any]:
+    """Build a JSON-RPC 2.0 error response dict."""
+    error: dict[str, Any] = {"code": code, "message": message}
+    if data is not None:
+        error["data"] = data
+    return {"jsonrpc": "2.0", "id": request_id, "error": error}
+
+
 async def _dispatch_to_api(
     request: Request,
     mapping: MCPMapping,
@@ -162,6 +191,113 @@ async def _dispatch_to_api(
     return response.json()
 
 
+# ---------------------------------------------------------------------------
+# JSON-RPC 2.0 method handlers (reuse existing TOOLS/RESOURCES dicts)
+# ---------------------------------------------------------------------------
+
+
+def _extract_path_params(path: str) -> list[str]:
+    """Extract parameter names from a URL template like ``/api/collections/{collection_id}``."""
+    return re.findall(r"\{(\w+)\}", path)
+
+
+def _handle_initialize() -> dict[str, Any]:
+    """Handle ``initialize`` – return server capabilities and metadata."""
+    return {
+        "protocolVersion": "2025-03-26",
+        "serverInfo": {
+            "name": "vectory",
+            "version": __version__,
+        },
+        "capabilities": {
+            "tools": {"listChanged": False},
+            "resources": {"subscribe": False, "listChanged": False},
+        },
+    }
+
+
+def _handle_tools_list() -> dict[str, Any]:
+    """Handle ``tools/list`` – return tool definitions in MCP JSON-RPC format."""
+    tools = []
+    for tool in TOOLS.values():
+        path_params = _extract_path_params(tool.path)
+        properties = {
+            p: {"type": "string", "description": f"Path parameter: {p}"}
+            for p in path_params
+        }
+        tools.append(
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "inputSchema": {
+                    "type": "object",
+                    "properties": properties,
+                },
+            }
+        )
+    return {"tools": tools}
+
+
+async def _handle_tools_call(params: dict[str, Any], request: Request) -> dict[str, Any]:
+    """Handle ``tools/call`` – invoke a tool by name."""
+    tool_name = params.get("name")
+    if not tool_name:
+        raise HTTPException(status_code=400, detail="Missing 'name' in params for tools/call")
+
+    mapping = TOOLS.get(tool_name)
+    if mapping is None:
+        raise HTTPException(status_code=404, detail=f"Unknown MCP tool '{tool_name}'.")
+
+    arguments = params.get("arguments", {})
+    result = await _dispatch_to_api(request, mapping, args=arguments)
+    return {
+        "content": [
+            {"type": "text", "text": json.dumps(result, default=str)},
+        ],
+    }
+
+
+def _handle_resources_list() -> dict[str, Any]:
+    """Handle ``resources/list`` – return resource definitions."""
+    return {
+        "resources": [
+            {
+                "uri": f"vectory://{name}",
+                "name": resource.name,
+                "description": resource.description,
+                "mimeType": "application/json",
+            }
+            for name, resource in RESOURCES.items()
+        ]
+    }
+
+
+async def _handle_resources_read(params: dict[str, Any], request: Request) -> dict[str, Any]:
+    """Handle ``resources/read`` – read a resource by URI."""
+    uri = params.get("uri", "")
+    resource_name = uri.removeprefix("vectory://") if uri.startswith("vectory://") else uri
+
+    mapping = RESOURCES.get(resource_name)
+    if mapping is None:
+        raise HTTPException(status_code=404, detail=f"Unknown MCP resource '{resource_name}'.")
+
+    result = await _dispatch_to_api(request, mapping)
+    return {
+        "contents": [
+            {
+                "uri": f"vectory://{resource_name}",
+                "mimeType": "application/json",
+                "text": json.dumps(result, default=str),
+            },
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Route handlers
+# ---------------------------------------------------------------------------
+
+
 @router.get("", summary="MCP server metadata")
 async def mcp_metadata():
     """Return MCP discovery metadata for Vectory."""
@@ -178,6 +314,45 @@ async def mcp_metadata():
             "read_resource": "/api/mcp/resources/{resource_name}",
         },
     }
+
+
+@router.post("", summary="JSON-RPC 2.0 MCP endpoint")
+async def jsonrpc_handler(body: JsonRpcRequest, request: Request):
+    """Handle MCP JSON-RPC 2.0 requests.
+
+    Dispatches the ``method`` field to existing MCP functionality and returns
+    a well-formed JSON-RPC 2.0 response.
+    """
+    method = body.method
+    params = body.params
+    request_id = body.id
+
+    try:
+        if method == "initialize":
+            result = _handle_initialize()
+        elif method == "ping":
+            result = {}
+        elif method == "tools/list":
+            result = _handle_tools_list()
+        elif method == "tools/call":
+            result = await _handle_tools_call(params, request)
+        elif method == "resources/list":
+            result = _handle_resources_list()
+        elif method == "resources/read":
+            result = await _handle_resources_read(params, request)
+        else:
+            return _jsonrpc_error(request_id, -32601, f"Method not found: {method}")
+    except HTTPException as exc:
+        return _jsonrpc_error(
+            request_id,
+            -32000,
+            str(exc.detail) if isinstance(exc.detail, str) else "Server error",
+            data=exc.detail if not isinstance(exc.detail, str) else None,
+        )
+    except Exception as exc:
+        return _jsonrpc_error(request_id, -32603, f"Internal error: {exc}")
+
+    return _jsonrpc_success(request_id, result)
 
 
 @router.get("/tools", summary="List MCP tools")
