@@ -339,6 +339,11 @@ export const systemApi = {
     return res.data
   },
 
+  activity: async (days = 7): Promise<{ date: string; queries: number; latency: number }[]> => {
+    const res = await api.get("/api/system/metrics/activity", { params: { days } })
+    return res.data
+  },
+
   models: async (): Promise<EmbeddingModel[]> => {
     const res = await api.get("/api/system/models")
     return res.data

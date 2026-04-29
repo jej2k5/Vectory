@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
+import { format, parseISO } from "date-fns"
 import { Database, Search, Activity, Clock, Plus, ArrowRight } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,22 +12,26 @@ import { MetricsChart } from "@/components/dashboard/MetricsChart"
 import { CollectionCard } from "@/components/collections/CollectionCard"
 import { systemApi, collectionsApi } from "@/lib/api"
 
-// Placeholder chart data (populated by metrics if available)
-const defaultChartData = [
-  { date: "Mon", queries: 0, latency: 0 },
-  { date: "Tue", queries: 0, latency: 0 },
-  { date: "Wed", queries: 0, latency: 0 },
-  { date: "Thu", queries: 0, latency: 0 },
-  { date: "Fri", queries: 0, latency: 0 },
-  { date: "Sat", queries: 0, latency: 0 },
-  { date: "Sun", queries: 0, latency: 0 },
-]
+const METRICS_REFETCH_MS = 10_000
 
 export default function DashboardPage() {
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ["metrics"],
     queryFn: () => systemApi.metrics(),
+    refetchInterval: METRICS_REFETCH_MS,
   })
+
+  const { data: activity, isLoading: activityLoading } = useQuery({
+    queryKey: ["metrics-activity", 7],
+    queryFn: () => systemApi.activity(7),
+    refetchInterval: METRICS_REFETCH_MS,
+  })
+
+  const chartData = (activity ?? []).map((d) => ({
+    date: format(parseISO(d.date), "EEE"),
+    queries: d.queries,
+    latency: d.latency,
+  }))
 
   const { data: collections, isLoading: collectionsLoading } = useQuery({
     queryKey: ["collections", 0, 6],
@@ -107,7 +112,11 @@ export default function DashboardPage() {
               <CardTitle>Query Activity</CardTitle>
             </CardHeader>
             <CardContent>
-              <MetricsChart data={defaultChartData} />
+              {activityLoading ? (
+                <div className="h-[300px] w-full bg-muted rounded animate-pulse" />
+              ) : (
+                <MetricsChart data={chartData} />
+              )}
             </CardContent>
           </Card>
           <HealthStatus />

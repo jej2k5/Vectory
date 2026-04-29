@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, Query as QueryParam
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,6 +59,51 @@ async def system_metrics(db: AsyncSession = Depends(get_db)):
         "total_queries": queries_count,
         "avg_latency_ms": round(avg_latency, 2) if avg_latency else 0.0,
     }
+
+
+@router.get("/metrics/activity", summary="Per-day query activity time series")
+async def query_activity(
+    days: int = QueryParam(7, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return query count and average latency bucketed by UTC day, oldest first.
+
+    Always returns exactly ``days`` buckets — missing days are zero-filled so the
+    client can render a stable axis.
+    """
+    today = datetime.now(timezone.utc).date()
+    start_date = today - timedelta(days=days - 1)
+    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+
+    result = await db.execute(
+        text(
+            """
+            SELECT
+                (date_trunc('day', created_at AT TIME ZONE 'UTC'))::date AS day,
+                COUNT(*)::int AS queries,
+                AVG(latency_ms) AS avg_latency
+            FROM queries
+            WHERE created_at >= :start_dt
+            GROUP BY day
+            """
+        ),
+        {"start_dt": start_dt},
+    )
+    rows_by_day = {row["day"]: row for row in result.mappings()}
+
+    series: list[dict] = []
+    for offset in range(days):
+        d = start_date + timedelta(days=offset)
+        row = rows_by_day.get(d)
+        latency = row["avg_latency"] if row else None
+        series.append(
+            {
+                "date": d.isoformat(),
+                "queries": int(row["queries"]) if row else 0,
+                "latency": round(float(latency), 2) if latency is not None else 0.0,
+            }
+        )
+    return series
 
 
 @router.get("/models", summary="List available embedding models")
